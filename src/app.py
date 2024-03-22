@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
+from models import db, User, Drink
 #from models import Person
 
 app = Flask(__name__)
@@ -39,11 +39,30 @@ def sitemap():
 @app.route('/user', methods=['GET'])
 def handle_hello():
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+    users = User.query.all() #SELECT * from users AND returns python objects, we can only jsonify dictionaries 
 
-    return jsonify(response_body), 200
+    return jsonify([user.serialize() for user in users]), 200 #[functionCalled for element in iterable]
+
+@app.route('/drink', methods=['POST', "GET"])
+def add_drink():
+    
+    if request.method == "GET":
+        drinks = Drink.query.all()
+        return jsonify([drink.serialize() for drink in drinks]),200
+
+    body = request.json
+    #receive from body of request
+    name = body.get("name")
+    price = body.get("price")
+
+    if name != None and price != None: #if properties not None, create new instance of Class Drink(which is a row in the table)
+        new_drink = Drink(name=name, price=price)
+        db.session.add(new_drink)
+        db.session.commit()
+        return jsonify(new_drink.serialize()), 200
+    return jsonify({"msg": "Error missing keys"}), 400
+
+    return jsonify(body), 200
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
