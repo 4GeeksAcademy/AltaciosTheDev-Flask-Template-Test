@@ -62,7 +62,33 @@ def add_drink():
         return jsonify(new_drink.serialize()), 200
     return jsonify({"msg": "Error missing keys"}), 400
 
-    return jsonify(body), 200
+@app.route('/drink/<int:id>', methods=['DELETE', "PUT"])
+def handle_drink(id):
+    search = Drink.query.filter_by(id=id).one_or_none() #si encuentra lo devuelve y si no devuelve None
+
+    if request.method == "PUT":
+        if search != None:
+            body = request.json
+            new_name = body.get("name",None)
+            new_price = body.get("price", None)
+            if new_name != None:
+                search.name = new_name
+            if new_price != None:
+                search.price = new_price
+            db.session.commit()
+            return jsonify(search.serialize()), 200
+        
+        return jsonify({"msg": "drink not found"}), 404
+    else:
+        if search != None:            
+            db.session.delete(search)
+            db.session.commit()
+            return jsonify({"msg": "ey lo lograste, borraste exitoso"}),200
+
+        else:
+            return jsonify({"msg": "drink not found"}),404
+
+    return jsonify({"msg": "something happended"}),500
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
