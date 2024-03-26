@@ -38,3 +38,35 @@ class Drink(db.Model):
             "price": self.price
             # do not serialize the password, its a security breach
         }
+    
+association_table_orders = db.Table(
+    "association_table_order",
+    db.metadata,
+    db.Column("order", db.ForeignKey("order.id")),
+    db.Column("drink", db.ForeignKey("drink.id"))
+)
+    
+class Order(db.Model):
+    __tablename__ = 'order'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(250), nullable=True)
+
+    drinks = db.relationship(Drink, secondary=association_table_orders) #para cada bebida va tener una orden automatico con backref 
+
+    def __init__(self,name):
+        self.name = name
+
+    def get_total(self):
+        total = 0
+        for drink in self.drinks:
+            total = total + drink.price
+        return total
+
+    def serialize(self):
+        return{
+            "id": self.id,
+            "drinks": [drink.serialize() for drink in self.drinks],
+            "total": self.get_total() 
+        }
+
+    

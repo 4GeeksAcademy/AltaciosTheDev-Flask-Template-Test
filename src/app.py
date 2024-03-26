@@ -8,7 +8,7 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User, Drink
+from models import db, User, Drink, Order
 #from models import Person
 
 app = Flask(__name__)
@@ -56,9 +56,9 @@ def add_drink():
     price = body.get("price")
 
     if name != None and price != None: #if properties not None, create new instance of Class Drink(which is a row in the table)
-        new_drink = Drink(name=name, price=price)
-        db.session.add(new_drink)
-        db.session.commit()
+        new_drink = Drink(name=name, price=price) #constructor 
+        db.session.add(new_drink) #RAM
+        db.session.commit() #ID, al guardar en base de datos, se asigna ID automatico 
         return jsonify(new_drink.serialize()), 200
     return jsonify({"msg": "Error missing keys"}), 400
 
@@ -89,6 +89,35 @@ def handle_drink(id):
             return jsonify({"msg": "drink not found"}),404
 
     return jsonify({"msg": "something happended"}),500
+
+@app.route("/orders", methods=['GET'])
+def get_orders():
+    orders = Order.query.all()
+    return jsonify([order.serialize() for order in orders]), 200
+
+@app.route("/orders", methods=['POST'])
+def add_order():
+    body = request.json
+    order_name = body.get("name")
+    new_order = Order(order_name) #objeto solo con nombre que viene del body
+    drinks_ids = body.get("drinks") #ids que vienen
+
+    for drink_id in drinks_ids:
+        # se busca cada id en tabla de Drinks para ver si se encuentra
+        search_drink = Drink.query.filter_by(id = drink_id).one_or_none()
+        #si se encuentra, se append TODA info de drink a new_order.drinks
+        if search_drink != None:
+            new_order.drinks.append(search_drink)
+            #aqui ya tiene info completa de cada drink 
+
+        # si no se encuentra drink en tabla de Drinks, se regresa ERROR.
+        else:
+            return jsonify({"msg": "drink not found"}),404
+        
+    db.session.add(new_order) #por la clase de la variable se sabe a que tabla ingresar
+    db.session.commit()
+        
+    return jsonify(new_order.serialize()), 201 
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
