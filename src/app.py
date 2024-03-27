@@ -1,40 +1,51 @@
 """
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
-import os
-from flask import Flask, request, jsonify, url_for
-from flask_migrate import Migrate
-from flask_swagger import swagger
-from flask_cors import CORS
-from utils import APIException, generate_sitemap
-from admin import setup_admin
-from models import db, User, Drink, Order
-#from models import Person
+import os #provides way to interact with operating system 
+from flask import Flask, request, jsonify #imports necessary info to build the web application in python 
+from flask_migrate import Migrate         #flask extension that handles database migrations for Flask applications using Alembic. Database operations are provided as command line under flash db command.
+from flask_swagger import swagger         #provides method that inspects the Flask app for endpoints that contain YAML docstrings. Used for creating API doc unsing swagger.
+from flask_cors import CORS               #extension for handling CORS. Allows us to control which origins are allowed to request, which HTTP methods are allowed, and what headers can be sent along with the requests.
+from utils import APIException, generate_sitemap  #generates an index of all the endpoints of the application. 
+from admin import setup_admin             
+from models import db, User, Drink, Order #db connection to sqlalchemy, could be changed for any other name.
 
-app = Flask(__name__)
-app.url_map.strict_slashes = False
+#Create Flask App
+app = Flask(__name__)                   #creates a flask application instance
+app.url_map.strict_slashes = False      #configures app to ignore trailing slashes in route URLs.
 
-db_url = os.getenv("DATABASE_URL")
-if db_url is not None:
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
+#Configure database 
+db_url = os.getenv("DATABASE_URL")      #retrieves env variable DATABASE_URL that contains the specifics of the postgresql database, user, pass, and db to connecto to.
+if db_url is not None:                  #code runs only if DATABASE_URL != None
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://") #configures the databasse URI to use postgresql
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db" #if db_url == None, condigures the database to use sqlite with a test.db file database
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-MIGRATE = Migrate(app, db)
-db.init_app(app)
-CORS(app)
-setup_admin(app)
+#psql -h localhost -U gitpod example
+#psql: This is the command to start the PostgreSQL interactive terminal program.
+#-h localhost: This option specifies the hostname of the PostgreSQL server to connect to. 
+#-U gitpod: This option specifies the username to use when connecting to the PostgreSQL server. 
+#example: This is the name of the database to connect to. By default in Postgres it would be the database of with the same name as the user.
+
+#Database migration 
+#when working with RDBMS its common to make changes to the structure of your database schema over time. Migration tools help manage these changes.
+MIGRATE = Migrate(app, db) #create instance of Migrate class asigns it to MIGRATE. This initializes the Flask-Migrate extension with the Flask application and SQLAlchemy, enabling database migrations for the application. Basically allows successful migration from app to the db.
+
+#Initialize database
+db.init_app(app)     #This method initializes the SQLAlchemy extension with the Flask application. It tells SQLAlchemy which Flask application it should be working with.
+CORS(app)            #Enables CORS support for the Flask app, allowing it to handle requests from different origins.
+setup_admin(app)     #Configures the Flask-Admin interface for the Flask app
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
-    return jsonify(error.to_dict()), error.status_code
+    return jsonify(error.to_dict()), error.status_code #Defines an error handler for instances of APIException, returning JSON-formatted error responses.
 
 # generate sitemap with all your endpoints
 @app.route('/')
 def sitemap():
-    return generate_sitemap(app)
+    return generate_sitemap(app) #Defines a route / that returns a sitemap of all endpoints in the application.
 
 @app.route('/user', methods=['GET'])
 def handle_hello():
